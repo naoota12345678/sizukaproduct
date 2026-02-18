@@ -1,65 +1,166 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { getDailyProductions, aggregateByProduct, type ProductionSummary } from "@/lib/firebase";
+
+function todayStr(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}${m}${d}`;
+}
+
+function formatDate(dateStr: string): string {
+  return `${dateStr.slice(0, 4)}/${dateStr.slice(4, 6)}/${dateStr.slice(6, 8)}`;
+}
+
+export default function Dashboard() {
+  const [summary, setSummary] = useState<ProductionSummary[]>([]);
+  const [totalQuantity, setTotalQuantity] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const dateStr = todayStr();
+
+  useEffect(() => {
+    getDailyProductions(dateStr)
+      .then((prods) => {
+        const agg = aggregateByProduct(prods);
+        setSummary(agg);
+        setTotalQuantity(agg.reduce((sum, item) => sum + item.quantity, 0));
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [dateStr]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div>
+      <h1 className="text-2xl font-bold text-slate-800 mb-6">
+        ダッシュボード
+      </h1>
+
+      {/* サマリーカード */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+          <p className="text-sm text-slate-500">本日の日付</p>
+          <p className="text-2xl font-bold text-slate-800 mt-1">
+            {formatDate(dateStr)}
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+          <p className="text-sm text-slate-500">本日の製造品目数</p>
+          <p className="text-2xl font-bold text-blue-600 mt-1">
+            {loading ? "..." : summary.length}
+          </p>
         </div>
-      </main>
+        <div className="bg-white rounded-lg shadow p-6 border border-slate-200">
+          <p className="text-sm text-slate-500">本日の製造合計数</p>
+          <p className="text-2xl font-bold text-green-600 mt-1">
+            {loading ? "..." : totalQuantity.toLocaleString()}
+          </p>
+        </div>
+      </div>
+
+      {/* ナビゲーションカード */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <Link
+          href="/daily"
+          className="bg-white rounded-lg shadow p-6 border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all"
+        >
+          <h2 className="text-lg font-semibold text-slate-800">日次表示</h2>
+          <p className="text-sm text-slate-500 mt-1">
+            日付を選んで製造データを確認
+          </p>
+        </Link>
+        <Link
+          href="/monthly"
+          className="bg-white rounded-lg shadow p-6 border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all"
+        >
+          <h2 className="text-lg font-semibold text-slate-800">月次表示</h2>
+          <p className="text-sm text-slate-500 mt-1">
+            月ごとの製造数合計を確認
+          </p>
+        </Link>
+        <Link
+          href="/yearly"
+          className="bg-white rounded-lg shadow p-6 border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all"
+        >
+          <h2 className="text-lg font-semibold text-slate-800">年次表示</h2>
+          <p className="text-sm text-slate-500 mt-1">
+            年間の月別製造数推移を確認
+          </p>
+        </Link>
+      </div>
+
+      {/* 本日の製造データ */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          <p className="text-red-700 text-sm">エラー: {error}</p>
+        </div>
+      )}
+
+      {!loading && summary.length > 0 && (
+        <div className="bg-white rounded-lg shadow border border-slate-200">
+          <div className="px-6 py-4 border-b border-slate-200">
+            <h2 className="text-lg font-semibold text-slate-800">
+              本日の製造データ
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-50 text-left text-sm text-slate-600">
+                  <th className="px-6 py-3 font-medium">商品コード</th>
+                  <th className="px-6 py-3 font-medium">商品名</th>
+                  <th className="px-6 py-3 font-medium">包装タイプ</th>
+                  <th className="px-6 py-3 font-medium text-right">数量</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {summary.map((item, i) => (
+                  <tr key={i} className="hover:bg-slate-50">
+                    <td className="px-6 py-3 text-sm text-slate-600">
+                      {item.productCode}
+                    </td>
+                    <td className="px-6 py-3 text-sm font-medium text-slate-800">
+                      {item.productName}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-slate-600">
+                      {item.packageType}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-right font-mono text-slate-800">
+                      {item.quantity.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-slate-50 font-semibold">
+                  <td className="px-6 py-3 text-sm" colSpan={3}>
+                    合計
+                  </td>
+                  <td className="px-6 py-3 text-sm text-right font-mono">
+                    {totalQuantity.toLocaleString()}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {!loading && summary.length === 0 && !error && (
+        <div className="bg-white rounded-lg shadow border border-slate-200 p-8 text-center">
+          <p className="text-slate-500">本日の製造データはまだありません</p>
+        </div>
+      )}
+
+      {loading && (
+        <div className="bg-white rounded-lg shadow border border-slate-200 p-8 text-center">
+          <p className="text-slate-500">読み込み中...</p>
+        </div>
+      )}
     </div>
   );
 }
