@@ -5,7 +5,6 @@ import {
   query,
   where,
   getDocs,
-  orderBy,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -40,8 +39,7 @@ export interface ProductionSummary {
 export async function getDailyProductions(dateStr: string): Promise<Production[]> {
   const q = query(
     collection(db, "productions"),
-    where("date", "==", dateStr),
-    orderBy("productName")
+    where("date", "==", dateStr)
   );
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => doc.data() as Production);
@@ -54,8 +52,7 @@ export async function getMonthlyProductions(year: number, month: number): Promis
   const q = query(
     collection(db, "productions"),
     where("date", ">=", startDate),
-    where("date", "<=", endDate),
-    orderBy("date")
+    where("date", "<=", endDate)
   );
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => doc.data() as Production);
@@ -68,8 +65,7 @@ export async function getYearlyProductions(year: number): Promise<Production[]> 
   const q = query(
     collection(db, "productions"),
     where("date", ">=", startDate),
-    where("date", "<=", endDate),
-    orderBy("date")
+    where("date", "<=", endDate)
   );
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => doc.data() as Production);
